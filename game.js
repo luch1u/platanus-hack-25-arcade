@@ -30,7 +30,7 @@ class SelectionScene extends Phaser.Scene {
       fontFamily: 'Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
-    this.add.text(200, 405, 'Press 1', {
+    this.add.text(200, 405, '← →', {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#888888'
@@ -42,7 +42,7 @@ class SelectionScene extends Phaser.Scene {
       fontFamily: 'Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
-    this.add.text(400, 405, 'Press 2', {
+    this.add.text(400, 405, '← →', {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#888888'
@@ -54,7 +54,7 @@ class SelectionScene extends Phaser.Scene {
       fontFamily: 'Arial',
       color: '#ffffff'
     }).setOrigin(0.5);
-    this.add.text(600, 405, 'Press 3', {
+    this.add.text(600, 405, '← →', {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#888888'
@@ -69,19 +69,33 @@ class SelectionScene extends Phaser.Scene {
       color: '#ffff00'
     }).setOrigin(0.5);
 
+    // Countdown variables
+    this.countdownActive = false;
+    this.countdownText = null;
+    this.countdownTimer = 0;
+
     // Keyboard input
     this.input.keyboard.on('keydown', (event) => {
-      if (event.key === '1') {
-        selectedBranch = 'frontend';
-        this.selectedBox.setPosition(200, 300);
-      } else if (event.key === '2') {
-        selectedBranch = 'mobile';
-        this.selectedBox.setPosition(400, 300);
-      } else if (event.key === '3') {
-        selectedBranch = 'backend';
-        this.selectedBox.setPosition(600, 300);
+      if (this.countdownActive) return; // Disable input during countdown
+      
+      if (event.key === 'ArrowLeft') {
+        if (selectedBranch === 'mobile') {
+          selectedBranch = 'frontend';
+          this.selectedBox.setPosition(200, 300);
+        } else if (selectedBranch === 'backend') {
+          selectedBranch = 'mobile';
+          this.selectedBox.setPosition(400, 300);
+        }
+      } else if (event.key === 'ArrowRight') {
+        if (selectedBranch === 'frontend') {
+          selectedBranch = 'mobile';
+          this.selectedBox.setPosition(400, 300);
+        } else if (selectedBranch === 'mobile') {
+          selectedBranch = 'backend';
+          this.selectedBox.setPosition(600, 300);
+        }
       } else if (event.key === ' ' || event.key === 'Enter') {
-        this.scene.start('GameScene');
+        this.startCountdown();
       }
     });
   }
@@ -108,6 +122,28 @@ class SelectionScene extends Phaser.Scene {
       fontSize: '48px',
       fontFamily: 'Arial'
     }).setOrigin(0.5);
+  }
+
+  startCountdown() {
+    this.countdownActive = true;
+    this.countdownText = this.add.text(400, 450, '3', {
+      fontSize: '48px',
+      fontFamily: 'Arial',
+      color: '#ffff00'
+    }).setOrigin(0.5);
+    this.countdownTimer = 3;
+  }
+
+  update(time, delta) {
+    if (this.countdownActive && this.countdownTimer > 0) {
+      this.countdownTimer -= delta / 1000;
+      if (this.countdownTimer <= 0) {
+        this.scene.start('GameScene');
+      } else {
+        const seconds = Math.ceil(this.countdownTimer);
+        this.countdownText.setText(seconds.toString());
+      }
+    }
   }
 }
 
