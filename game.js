@@ -77,7 +77,7 @@ class SelectionScene extends Phaser.Scene {
     // Keyboard input
     this.input.keyboard.on('keydown', (event) => {
       if (this.countdownActive) return; // Disable input during countdown
-      
+
       if (event.key === 'ArrowLeft') {
         if (selectedBranch === 'mobile') {
           selectedBranch = 'frontend';
@@ -198,6 +198,15 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Arial',
       color: '#00ff00'
     });
+
+    // Production ready text
+    this.productionReadyText = this.add.text(400, 300, '', {
+      fontSize: '32px',
+      fontFamily: 'Arial',
+      color: '#ffff00',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.productionReadyText.setVisible(false);
 
     // Instructions
     this.add.text(400, 570, 'Arrows: Move | Space: Shoot | P: Launch Rocket (5 features)', {
@@ -354,6 +363,12 @@ class GameScene extends Phaser.Scene {
     this.features.splice(idx, 1);
     this.featureCount++;
     this.featureText.setText('Features: ' + this.featureCount + '/5');
+
+    // Show production ready message when we have enough features
+    if (this.featureCount >= 5) {
+      this.showProductionReady();
+    }
+
     this.playTone(1600, 0.1);
   }
 
@@ -369,6 +384,10 @@ class GameScene extends Phaser.Scene {
 
     this.featureCount -= 5;
     this.featureText.setText('Features: ' + this.featureCount + '/5');
+
+    // Hide production ready message after launching
+    this.hideProductionReady();
+
     this.playTone(200, 0.3);
   }
 
@@ -392,7 +411,7 @@ class GameScene extends Phaser.Scene {
       if (bug.y > 600) {
         bug.destroy();
         this.bugs.splice(i, 1);
-        this.loseLife();
+        this.loseLife(); // Only bugs take life when they hit the ground
       }
     }
 
@@ -401,7 +420,7 @@ class GameScene extends Phaser.Scene {
       if (feature.y > 600) {
         feature.destroy();
         this.features.splice(i, 1);
-        this.loseLife();
+        // Features do NOT take life when they hit the ground
       }
     }
   }
@@ -466,6 +485,27 @@ class GameScene extends Phaser.Scene {
       color: '#ffff00',
       align: 'center'
     }).setOrigin(0.5);
+  }
+
+  showProductionReady() {
+    this.productionReadyText.setText('🚀 LAUNCH TO PRODUCTION! 🚀\nPress P');
+    this.productionReadyText.setVisible(true);
+
+    // Add pulsing effect
+    this.tweens.add({
+      targets: this.productionReadyText,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 500,
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  hideProductionReady() {
+    this.productionReadyText.setVisible(false);
+    this.tweens.killTweensOf(this.productionReadyText);
+    this.productionReadyText.setScale(1);
   }
 
   restartGame() {
