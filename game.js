@@ -154,10 +154,10 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    // Create player with selected IDE icon
+    // Create player with selected branch icon
     this.playerContainer = this.add.container(400, 550);
     this.physics.world.enable(this.playerContainer);
-    this.playerContainer.body.setSize(70, 70);
+    this.playerContainer.body.setSize(90, 90);
     this.playerContainer.body.setImmovable(true);
 
     this.drawPlayerIcon();
@@ -166,6 +166,14 @@ class GameScene extends Phaser.Scene {
     this.mothership = this.add.rectangle(400, 50, 120, 30, 0xff0000);
     this.physics.add.existing(this.mothership);
     this.mothership.body.setImmovable(true);
+
+    // Add PRODUCT OWNER text to mothership
+    this.mothershipText = this.add.text(400, 50, 'PRODUCT OWNER', {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
 
     // Game state
     this.bugs = [];
@@ -200,8 +208,8 @@ class GameScene extends Phaser.Scene {
     });
 
     // Production ready text
-    this.productionReadyText = this.add.text(400, 300, '', {
-      fontSize: '32px',
+    this.productionReadyText = this.add.text(650, 100, '', {
+      fontSize: '18px',
       fontFamily: 'Arial',
       color: '#ffff00',
       align: 'center'
@@ -235,17 +243,17 @@ class GameScene extends Phaser.Scene {
     let iconText;
     if (selectedBranch === 'frontend') {
       iconText = this.add.text(0, 0, '💻', {
-        fontSize: '32px',
+        fontSize: '48px',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
     } else if (selectedBranch === 'mobile') {
       iconText = this.add.text(0, 0, '📱', {
-        fontSize: '32px',
+        fontSize: '48px',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
     } else {
       iconText = this.add.text(0, 0, '🔧', {
-        fontSize: '32px',
+        fontSize: '48px',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
     }
@@ -265,6 +273,7 @@ class GameScene extends Phaser.Scene {
 
     // Move mothership
     this.mothership.x += this.mothershipDirection * this.mothershipSpeed * (delta / 1000);
+    this.mothershipText.x = this.mothership.x; // Move text with mothership
     if (this.mothership.x <= 60 || this.mothership.x >= 740) {
       this.mothershipDirection *= -1;
     }
@@ -284,10 +293,9 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnBug() {
-    const bug = this.add.text(this.mothership.x, this.mothership.y + 20, 'B', {
+    const bug = this.add.text(this.mothership.x, this.mothership.y + 20, '🐛', {
       fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#ff0000'
+      fontFamily: 'Arial'
     });
     this.physics.add.existing(bug);
     bug.body.setVelocityY(100);
@@ -339,10 +347,9 @@ class GameScene extends Phaser.Scene {
   }
 
   hitBug(bullet, bug, bulletIdx, bugIdx) {
-    const feature = this.add.text(bug.x, bug.y, 'F', {
+    const feature = this.add.text(bug.x, bug.y, '✨', {
       fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#00ff00'
+      fontFamily: 'Arial'
     });
     this.physics.add.existing(feature);
     feature.body.setVelocityY(100);
@@ -373,11 +380,11 @@ class GameScene extends Phaser.Scene {
   }
 
   launchProductionRocket() {
-    const rocket = this.add.text(this.playerContainer.x, this.playerContainer.y - 40, 'P', {
+    const rocket = this.add.text(this.playerContainer.x, this.playerContainer.y - 40, '🚀', {
       fontSize: '28px',
-      fontFamily: 'Arial',
-      color: '#0000ff'
+      fontFamily: 'Arial'
     });
+    rocket.setRotation(-Math.PI / 4); // Rotate 45 degrees counterclockwise
     this.physics.add.existing(rocket);
     rocket.body.setVelocityY(-400);
     this.productionRockets.push(rocket);
@@ -488,7 +495,7 @@ class GameScene extends Phaser.Scene {
   }
 
   showProductionReady() {
-    this.productionReadyText.setText('🚀 LAUNCH TO PRODUCTION! 🚀\nPress P');
+    this.productionReadyText.setText('🚀 LAUNCH TO\nPRODUCTION!\nPress P');
     this.productionReadyText.setVisible(true);
 
     // Add pulsing effect
