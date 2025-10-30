@@ -2,12 +2,37 @@
 // Convert bugs to features, collect them, and launch production rockets!
 
 // Global game state
+// Optional: paste your VSCode spritesheet as a Base64 data URI below.
+// Example: const VSCODE_SPRITESHEET = 'data:image/png;base64,AA...';
+// Set frame size to your icon/sprite frame dimensions (e.g., 16x16).
+const VSCODE_SPRITESHEET = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwklEQVR4AZSQgRHDIAwDnW7ZGTpPZ+iYKR8hMJTehVwM2JY+OI/Ye84iJ8qmdwdwxvMdV0Q0yF2AzProAFkBGr3qR3MtepsBFhviXPrPS3taM6CLmZU5tUsu86GkrxlwhETqYnau/ceMMAPI/0GWZgwzQGPoi/SHP67CuGaAzPTz9Z3zTzhPkQH9+rpBzzEBXUAyAJlNntk5PY+jc11nAGWbORMjhEqKFSC123GEeMTSvgso0hAkmSnuANAzHsH5ii8AAAD' + '/' + '/4QIPVoAAAAGSURBVAMA+1o4Id3Y/QsAAAAASUVORK5CYIIA';
+const VSCODE_FRAME_SIZE = { w: 16, h: 16 };
+// IntelliJ spritesheet (provided by user)
+const INTELLIJ_SPRITESHEET = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtklEQVR4AcyTvQ3DIBCF33MDG6T1XpnC2SBtimSKrOI5vAYV4Tj55BDAlLH0+f6fDiSmDa84Cq5bLJmQvhkLRsB7xhcAskCyiDEaEgu1nOSPmADJnCfVSkCqT6qVXIkJlIXRuCkg64+ITJfbkvv2gd1K8uhLXMM2IAlSkUZSfZISNjGBZsdJ4Q8EHs/1ZMl+2Y4gN17SH9VqFnDOwXv/g7b0/1kghIAa/VGtZoE7VrRIzxdNAHwAAAD' + '/' + '/1NcjKsAAAAGSURBVAMA+1o4Id3Y/QsAAAAASUVORK5CYIIA';
+const INTELLIJ_FRAME_SIZE = { w: 16, h: 16 };
 let selectedBranch = 'frontend'; // frontend, mobile, backend
 
 // Selection Scene
 class SelectionScene extends Phaser.Scene {
   constructor() {
     super({ key: 'SelectionScene' });
+  }
+
+  preload() {
+    if (VSCODE_SPRITESHEET && VSCODE_SPRITESHEET.startsWith('data:image')) {
+      this.load.spritesheet(
+        'vscode',
+        VSCODE_SPRITESHEET,
+        { frameWidth: VSCODE_FRAME_SIZE.w, frameHeight: VSCODE_FRAME_SIZE.h }
+      );
+    }
+    if (INTELLIJ_SPRITESHEET && INTELLIJ_SPRITESHEET.startsWith('data:image')) {
+      this.load.spritesheet(
+        'intellij',
+        INTELLIJ_SPRITESHEET,
+        { frameWidth: INTELLIJ_FRAME_SIZE.w, frameHeight: INTELLIJ_FRAME_SIZE.h }
+      );
+    }
   }
 
   create() {
@@ -17,7 +42,7 @@ class SelectionScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.add.text(400, 160, 'Choose Your Dev Branch', {
+    this.add.text(400, 160, 'Elije tu editor de código', {
       fontSize: '24px',
       fontFamily: 'Arial',
       color: '#00ff00'
@@ -101,7 +126,11 @@ class SelectionScene extends Phaser.Scene {
   }
 
   drawFrontendIcon(x, y) {
-    // Use emoji for frontend (laptop)
+    if (this.textures.exists('vscode')) {
+      const img = this.add.image(x, y, 'vscode', 0).setOrigin(0.5);
+      img.setScale(6);
+      return;
+    }
     const icon = this.add.text(x, y, '💻', {
       fontSize: '48px',
       fontFamily: 'Arial'
@@ -109,7 +138,11 @@ class SelectionScene extends Phaser.Scene {
   }
 
   drawMobileIcon(x, y) {
-    // Use emoji for mobile (phone)
+    if (this.textures.exists('intellij')) {
+      const img = this.add.image(x, y, 'intellij', 0).setOrigin(0.5);
+      img.setScale(6);
+      return;
+    }
     const icon = this.add.text(x, y, '📱', {
       fontSize: '48px',
       fontFamily: 'Arial'
@@ -242,11 +275,23 @@ class GameScene extends Phaser.Scene {
   drawPlayerIcon() {
     let iconText;
     if (selectedBranch === 'frontend') {
+      if (this.textures.exists('vscode')) {
+        const img = this.add.image(0, 0, 'vscode', 0).setOrigin(0.5);
+        img.setScale(6);
+        this.playerContainer.add(img);
+        return;
+      }
       iconText = this.add.text(0, 0, '💻', {
         fontSize: '48px',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
     } else if (selectedBranch === 'mobile') {
+      if (this.textures.exists('intellij')) {
+        const img = this.add.image(0, 0, 'intellij', 0).setOrigin(0.5);
+        img.setScale(6);
+        this.playerContainer.add(img);
+        return;
+      }
       iconText = this.add.text(0, 0, '📱', {
         fontSize: '48px',
         fontFamily: 'Arial'
@@ -543,6 +588,7 @@ const config = {
   type: Phaser.AUTO,
   width: 800,
   height: 600,
+  render: { pixelArt: true, antialias: false },
   backgroundColor: '#000011',
   physics: {
     default: 'arcade',
