@@ -1,6 +1,71 @@
 // Platanus Hack 25: Bug to Feature Game
 // Convert bugs to features, collect them, and launch production rockets!
 
+// =============================================================================
+// ARCADE BUTTON MAPPING - COMPLETE TEMPLATE
+// =============================================================================
+// Reference: See button-layout.webp at hack.platan.us/assets/images/arcade/
+//
+// Maps arcade button codes to keyboard keys for local testing.
+// Each arcade code can map to multiple keyboard keys (array values).
+// The arcade cabinet sends codes like 'P1U', 'P1A', etc. when buttons are pressed.
+//
+// To use in your game:
+//   if (key === 'P1U') { ... }  // Works on both arcade and local (via keyboard)
+// =============================================================================
+
+const ARCADE_CONTROLS = {
+  // ===== PLAYER 1 CONTROLS =====
+  // Joystick - Left hand on WASD
+  'P1U': ['w'],
+  'P1D': ['s'],
+  'P1L': ['a'],
+  'P1R': ['d'],
+
+  // Action Buttons - Right hand on home row area (ergonomic!)
+  // Top row (ABC): U, I, O  |  Bottom row (XYZ): J, K, L
+  'P1A': ['u'],
+  'P1B': ['i'],
+  'P1C': ['o'],
+  'P1X': ['j'],
+  'P1Y': ['k'],
+  'P1Z': ['l'],
+
+  // Start Button
+  'START1': ['1', 'Enter'],
+
+  // ===== PLAYER 2 CONTROLS =====
+  // Joystick - Right hand on Arrow Keys
+  'P2U': ['ArrowUp'],
+  'P2D': ['ArrowDown'],
+  'P2L': ['ArrowLeft'],
+  'P2R': ['ArrowRight'],
+
+  // Action Buttons - Left hand (avoiding P1's WASD keys)
+  // Top row (ABC): R, T, Y  |  Bottom row (XYZ): F, G, H
+  'P2A': ['r'],
+  'P2B': ['t'],
+  'P2C': ['y'],
+  'P2X': ['f'],
+  'P2Y': ['g'],
+  'P2Z': ['h'],
+
+  // Start Button
+  'START2': ['2']
+};
+
+// Build reverse lookup: keyboard key → arcade button code
+const KEYBOARD_TO_ARCADE = {};
+for (const [arcadeCode, keyboardKeys] of Object.entries(ARCADE_CONTROLS)) {
+  if (keyboardKeys) {
+    // Handle both array and single value
+    const keys = Array.isArray(keyboardKeys) ? keyboardKeys : [keyboardKeys];
+    keys.forEach(key => {
+      KEYBOARD_TO_ARCADE[key] = arcadeCode;
+    });
+  }
+}
+
 // Global game state
 // Optional: paste your VSCode spritesheet as a Base64 data URI below.
 // Example: const VSCODE_SPRITESHEET = 'data:image/png;base64,AA...';
@@ -99,11 +164,14 @@ class SelectionScene extends Phaser.Scene {
     this.countdownText = null;
     this.countdownTimer = 0;
 
-    // Keyboard input
+    // Keyboard and Arcade Button input
     this.input.keyboard.on('keydown', (event) => {
       if (this.countdownActive) return; // Disable input during countdown
 
-      if (event.key === 'ArrowLeft') {
+      // Normalize keyboard input to arcade codes for easier testing
+      const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
+
+      if (key === 'P2L' || event.key === 'ArrowLeft') {
         if (selectedBranch === 'mobile') {
           selectedBranch = 'frontend';
           this.selectedBox.setPosition(200, 300);
@@ -111,7 +179,7 @@ class SelectionScene extends Phaser.Scene {
           selectedBranch = 'mobile';
           this.selectedBox.setPosition(400, 300);
         }
-      } else if (event.key === 'ArrowRight') {
+      } else if (key === 'P2R' || event.key === 'ArrowRight') {
         if (selectedBranch === 'frontend') {
           selectedBranch = 'mobile';
           this.selectedBox.setPosition(400, 300);
@@ -119,7 +187,7 @@ class SelectionScene extends Phaser.Scene {
           selectedBranch = 'backend';
           this.selectedBox.setPosition(600, 300);
         }
-      } else if (event.key === ' ' || event.key === 'Enter') {
+      } else if (key === 'START1' || event.key === ' ' || event.key === 'Enter') {
         this.startCountdown();
       }
     });
@@ -220,6 +288,18 @@ class GameScene extends Phaser.Scene {
     this.bugSpawnTimer = 0;
     this.mothershipDirection = 1;
     this.mothershipSpeed = 50;
+    
+    // Difficulty levels system
+    this.levels = [
+      { name: 'Practicante/Intern', scoreThreshold: 0, speed: 50, erraticChance: 0 },
+      { name: 'Junior Dev', scoreThreshold: 100, speed: 70, erraticChance: 0.1 },
+      { name: 'Semi Senior', scoreThreshold: 250, speed: 90, erraticChance: 0.25 },
+      { name: 'Senior Dev', scoreThreshold: 400, speed: 120, erraticChance: 0.4 },
+      { name: '10X Engineer', scoreThreshold: 600, speed: 150, erraticChance: 0.6 }
+    ];
+    this.currentLevel = 0;
+    this.mothershipErraticTimer = 0;
+    this.mothershipErraticInterval = 2000; // Change direction every 2 seconds at max erratic
 
     // UI Text
     this.scoreText = this.add.text(16, 16, 'Score: 0', {
@@ -240,6 +320,12 @@ class GameScene extends Phaser.Scene {
       color: '#00ff00'
     });
 
+    this.levelText = this.add.text(16, 88, 'Level: Practicante/Intern', {
+      fontSize: '20px',
+      fontFamily: 'Arial',
+      color: '#00ffff'
+    });
+
     // Production ready text
     this.productionReadyText = this.add.text(650, 100, '', {
       fontSize: '18px',
@@ -250,26 +336,56 @@ class GameScene extends Phaser.Scene {
     this.productionReadyText.setVisible(false);
 
     // Instructions
-    this.add.text(400, 570, 'Arrows: Move | Space: Shoot | P: Launch Rocket (5 features)', {
+    this.add.text(400, 570, 'Arrows: Move | Space/Button A: Shoot | P/Button Y: Launch Rocket (5 features)', {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#888888',
       align: 'center'
     }).setOrigin(0.5);
 
-    // Keyboard controls
+    // Create keyboard keys for movement (support both keyboard and arcade controls)
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.wasd = this.input.keyboard.addKeys('W,S,A,D');
+
+    // Keyboard and Arcade Button controls
     this.input.keyboard.on('keydown', (event) => {
-      if (this.gameOver && event.key === 'r') {
+      // Normalize keyboard input to arcade codes for easier testing
+      const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
+
+      if (this.gameOver && (key === 'P2A' || event.key === 'r')) {
         this.restartGame();
         return;
       }
 
-      if (event.key === ' ') {
+      if (key === 'P1A' || event.key === ' ') {
         this.shootBullet();
-      } else if (event.key === 'p' && this.featureCount >= 5) {
+      } else if ((key === 'P1Y' || event.key === 'p') && this.featureCount >= 5) {
         this.launchProductionRocket();
       }
     });
+  }
+
+  getCurrentLevel() {
+    // Find the highest level the player has reached based on score
+    for (let i = this.levels.length - 1; i >= 0; i--) {
+      if (this.score >= this.levels[i].scoreThreshold) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  updateDifficulty() {
+    const newLevel = this.getCurrentLevel();
+    if (newLevel !== this.currentLevel) {
+      this.currentLevel = newLevel;
+      const level = this.levels[this.currentLevel];
+      this.mothershipSpeed = level.speed;
+      this.levelText.setText('Level: ' + level.name);
+      
+      // Play level up sound
+      this.playTone(1000, 0.2);
+    }
   }
 
   drawPlayerIcon() {
@@ -308,15 +424,32 @@ class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.gameOver) return;
 
-    // Move player
-    const cursors = this.input.keyboard.createCursorKeys();
-    if (cursors.left.isDown && this.playerContainer.x > 40) {
+    // Update difficulty level based on score
+    this.updateDifficulty();
+
+    // Move player (support both keyboard and arcade controls)
+    if ((this.cursors.left.isDown || this.wasd.A.isDown) && this.playerContainer.x > 40) {
       this.playerContainer.x -= 200 * (delta / 1000);
-    } else if (cursors.right.isDown && this.playerContainer.x < 760) {
+    } else if ((this.cursors.right.isDown || this.wasd.D.isDown) && this.playerContainer.x < 760) {
       this.playerContainer.x += 200 * (delta / 1000);
     }
 
-    // Move mothership
+    // Move mothership with erratic behavior at higher levels
+    const level = this.levels[this.currentLevel];
+    this.mothershipErraticTimer += delta;
+    
+    // Erratic direction changes based on level
+    if (level.erraticChance > 0) {
+      const erraticInterval = this.mothershipErraticInterval / (1 + level.erraticChance * 2);
+      if (this.mothershipErraticTimer >= erraticInterval) {
+        if (Math.random() < level.erraticChance) {
+          this.mothershipDirection *= -1;
+        }
+        this.mothershipErraticTimer = 0;
+      }
+    }
+    
+    // Normal boundary bounce
     this.mothership.x += this.mothershipDirection * this.mothershipSpeed * (delta / 1000);
     this.mothershipText.x = this.mothership.x; // Move text with mothership
     if (this.mothership.x <= 60 || this.mothership.x >= 740) {
@@ -531,7 +664,7 @@ class GameScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.add.text(400, 400, 'Press R to Restart', {
+    this.add.text(400, 400, 'Press Button A or R to Restart', {
       fontSize: '20px',
       fontFamily: 'Arial',
       color: '#ffff00',
@@ -540,7 +673,7 @@ class GameScene extends Phaser.Scene {
   }
 
   showProductionReady() {
-    this.productionReadyText.setText('🚀 LAUNCH TO\nPRODUCTION!\nPress P');
+    this.productionReadyText.setText('🚀 LAUNCH TO\nPRODUCTION!\nPress P or Button Y');
     this.productionReadyText.setVisible(true);
 
     // Add pulsing effect
