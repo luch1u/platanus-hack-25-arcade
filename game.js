@@ -288,18 +288,28 @@ class GameScene extends Phaser.Scene {
     this.bugSpawnTimer = 0;
     this.mothershipDirection = 1;
     this.mothershipSpeed = 50;
-    
-    // Difficulty levels system
+
+    // Difficulty levels system (based on production launches)
     this.levels = [
-      { name: 'Practicante/Intern', scoreThreshold: 0, speed: 50, erraticChance: 0 },
-      { name: 'Junior Dev', scoreThreshold: 100, speed: 70, erraticChance: 0.1 },
-      { name: 'Semi Senior', scoreThreshold: 250, speed: 90, erraticChance: 0.25 },
-      { name: 'Senior Dev', scoreThreshold: 400, speed: 120, erraticChance: 0.4 },
-      { name: '10X Engineer', scoreThreshold: 600, speed: 150, erraticChance: 0.6 }
+      { name: 'Practicante/Intern', productionCount: 0, speed: 50, erraticChance: 0 },
+      { name: 'Junior Dev', productionCount: 3, speed: 70, erraticChance: 0.1 },
+      { name: 'Semi Senior', productionCount: 6, speed: 90, erraticChance: 0.25 },
+      { name: 'Senior Dev', productionCount: 9, speed: 120, erraticChance: 0.4 },
+      { name: '10X Engineer', productionCount: 12, speed: 150, erraticChance: 0.6 }
     ];
     this.currentLevel = 0;
+    this.productionLaunches = 0; // Contador de salidas a producción exitosas
     this.mothershipErraticTimer = 0;
     this.mothershipErraticInterval = 2000; // Change direction every 2 seconds at max erratic
+
+    // Sistema de sobrecarga del arma
+    this.shotCount = 0; // Contador de disparos consecutivos
+    this.maxShots = 4; // Máximo de disparos antes de sobrecalentarse
+    this.overheated = false; // Estado de sobrecalentamiento
+    this.cooldownTimer = 0; // Temporizador de enfriamiento
+    this.cooldownDuration = 3000; // 3 segundos de enfriamiento
+    this.lastShotTime = 0; // Tiempo del último disparo
+    this.shotResetDelay = 2000; // Tiempo sin disparar para resetear contador (2 segundos)
 
     // UI Text
     this.scoreText = this.add.text(16, 16, 'Score: 0', {
@@ -308,10 +318,9 @@ class GameScene extends Phaser.Scene {
       color: '#ffffff'
     });
 
-    this.livesText = this.add.text(16, 40, 'Lives: 3', {
-      fontSize: '20px',
-      fontFamily: 'Arial',
-      color: '#ff0000'
+    this.livesText = this.add.text(16, 40, '❤️❤️❤️', {
+      fontSize: '24px',
+      fontFamily: 'Arial'
     });
 
     this.featureText = this.add.text(16, 64, 'Features: 0/5', {
@@ -326,6 +335,40 @@ class GameScene extends Phaser.Scene {
       color: '#00ffff'
     });
 
+    // Barra de sobrecarga del arma (parte inferior izquierda)
+    this.overheatBarX = 16;
+    this.overheatBarY = 580;
+    this.overheatBarWidth = 120;
+    this.overheatBarHeight = 10;
+
+    // Fondo de la barra
+    this.overheatBarBg = this.add.rectangle(this.overheatBarX + this.overheatBarWidth / 2, this.overheatBarY, this.overheatBarWidth, this.overheatBarHeight, 0x333333);
+    this.overheatBarBg.setOrigin(0.5, 0.5);
+    this.overheatBarBg.setStrokeStyle(2, 0xffffff);
+
+    // Barra de progreso de sobrecarga usando Graphics
+    this.overheatBarGraphics = this.add.graphics();
+    this.overheatBarProgress = 0;
+    this.overheatBarColor = 0x00ff00;
+
+    // Texto de la barra (arriba de la barra)
+    this.overheatBarText = this.add.text(this.overheatBarX, this.overheatBarY - 20, 'Sobrecarga', {
+      fontSize: '11px',
+      fontFamily: 'Arial',
+      color: '#ffffff'
+    });
+
+    // Level up message text (inicialmente invisible)
+    this.levelUpText = this.add.text(400, 300, '', {
+      fontSize: '48px',
+      fontFamily: 'Arial',
+      color: '#00ff00',
+      align: 'center',
+      stroke: '#000000',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+    this.levelUpText.setVisible(false);
+
     // Production ready text
     this.productionReadyText = this.add.text(650, 100, '', {
       fontSize: '18px',
@@ -334,6 +377,17 @@ class GameScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
     this.productionReadyText.setVisible(false);
+
+    // Overheat message text
+    this.overheatText = this.add.text(400, 300, 'SIN TOKENS', {
+      fontSize: '48px',
+      fontFamily: 'Arial',
+      color: '#ff0000',
+      align: 'center',
+      stroke: '#000000',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+    this.overheatText.setVisible(false);
 
     // Instructions
     this.add.text(400, 570, 'Arrows: Move | Space/Button A: Shoot | P/Button Y: Launch Rocket (5 features)', {
@@ -366,9 +420,9 @@ class GameScene extends Phaser.Scene {
   }
 
   getCurrentLevel() {
-    // Find the highest level the player has reached based on score
+    // Find the highest level the player has reached based on production launches
     for (let i = this.levels.length - 1; i >= 0; i--) {
-      if (this.score >= this.levels[i].scoreThreshold) {
+      if (this.productionLaunches >= this.levels[i].productionCount) {
         return i;
       }
     }
@@ -377,15 +431,48 @@ class GameScene extends Phaser.Scene {
 
   updateDifficulty() {
     const newLevel = this.getCurrentLevel();
-    if (newLevel !== this.currentLevel) {
+    if (newLevel !== this.currentLevel && newLevel > this.currentLevel) {
       this.currentLevel = newLevel;
       const level = this.levels[this.currentLevel];
       this.mothershipSpeed = level.speed;
       this.levelText.setText('Level: ' + level.name);
-      
+
+      // Mostrar mensaje grande de nivel
+      this.showLevelUpMessage(level.name);
+
       // Play level up sound
       this.playTone(1000, 0.2);
     }
+  }
+
+  showLevelUpMessage(levelName) {
+    this.levelUpText.setText('¡Subiste de nivel!:\n' + levelName);
+    this.levelUpText.setVisible(true);
+    this.levelUpText.setScale(0.5);
+    this.levelUpText.setAlpha(1);
+
+    // Animación de entrada
+    this.tweens.add({
+      targets: this.levelUpText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 500,
+      ease: 'Back.easeOut'
+    });
+
+    // Animación de salida después de 2 segundos
+    this.time.delayedCall(2000, () => {
+      this.tweens.add({
+        targets: this.levelUpText,
+        alpha: 0,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 500,
+        onComplete: () => {
+          this.levelUpText.setVisible(false);
+        }
+      });
+    });
   }
 
   drawPlayerIcon() {
@@ -424,9 +511,6 @@ class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.gameOver) return;
 
-    // Update difficulty level based on score
-    this.updateDifficulty();
-
     // Move player (support both keyboard and arcade controls)
     if ((this.cursors.left.isDown || this.wasd.A.isDown) && this.playerContainer.x > 40) {
       this.playerContainer.x -= 200 * (delta / 1000);
@@ -437,7 +521,7 @@ class GameScene extends Phaser.Scene {
     // Move mothership with erratic behavior at higher levels
     const level = this.levels[this.currentLevel];
     this.mothershipErraticTimer += delta;
-    
+
     // Erratic direction changes based on level
     if (level.erraticChance > 0) {
       const erraticInterval = this.mothershipErraticInterval / (1 + level.erraticChance * 2);
@@ -448,7 +532,7 @@ class GameScene extends Phaser.Scene {
         this.mothershipErraticTimer = 0;
       }
     }
-    
+
     // Normal boundary bounce
     this.mothership.x += this.mothershipDirection * this.mothershipSpeed * (delta / 1000);
     this.mothershipText.x = this.mothership.x; // Move text with mothership
@@ -467,6 +551,7 @@ class GameScene extends Phaser.Scene {
     this.updateFallingObjects();
     this.updateBullets();
     this.updateProductionRockets();
+    this.updateOverheat(time, delta);
     this.checkCollisions();
   }
 
@@ -481,11 +566,144 @@ class GameScene extends Phaser.Scene {
   }
 
   shootBullet() {
+    // Verificar si el arma está sobrecalentada
+    if (this.overheated) {
+      return; // No se puede disparar si está sobrecalentada
+    }
+
+    // Disparar
     const bullet = this.add.rectangle(this.playerContainer.x, this.playerContainer.y - 40, 4, 10, 0xffff00);
     this.physics.add.existing(bullet);
     bullet.body.setVelocityY(-300);
     this.bullets.push(bullet);
     this.playTone(800, 0.1);
+
+    // Incrementar contador de disparos
+    this.shotCount++;
+    this.lastShotTime = this.time.now;
+
+    // Actualizar barra de sobrecarga
+    const progress = this.shotCount / this.maxShots;
+    this.updateOverheatBar(progress);
+
+    // Verificar si se alcanzó el límite de disparos
+    if (this.shotCount >= this.maxShots) {
+      this.overheat();
+    }
+  }
+
+  overheat() {
+    // Activar sobrecalentamiento
+    this.overheated = true;
+    this.shotCount = 0;
+    this.cooldownTimer = 0;
+
+    // Mostrar mensaje "SIN TOKENS"
+    this.overheatText.setVisible(true);
+    this.overheatText.setAlpha(1);
+    this.overheatText.setScale(1);
+
+    // Animación de entrada
+    this.tweens.add({
+      targets: this.overheatText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 300,
+      ease: 'Back.easeOut',
+      yoyo: true,
+      repeat: 1
+    });
+  }
+
+  updateOverheat(time, delta) {
+    if (this.overheated) {
+      // Incrementar temporizador de enfriamiento
+      this.cooldownTimer += delta;
+
+      // Actualizar barra de sobrecarga (mostrar llena en rojo durante enfriamiento)
+      this.updateOverheatBar(1.0, 0xff0000);
+
+      // Si pasaron 3 segundos, enfriar el arma
+      if (this.cooldownTimer >= this.cooldownDuration) {
+        this.cooldown();
+      }
+    } else {
+      // Si no está sobrecalentada, verificar si pasó tiempo suficiente sin disparar para resetear contador
+      if (this.lastShotTime > 0) {
+        const timeSinceLastShot = time - this.lastShotTime;
+
+        // Disminuir gradualmente la barra si no se dispara
+        if (timeSinceLastShot > 0 && this.shotCount > 0) {
+          // Calcular reducción basada en el tiempo sin disparar
+          const decayRate = delta / this.shotResetDelay; // Reducción por frame
+          const currentProgress = this.shotCount / this.maxShots;
+          const newProgress = Math.max(0, currentProgress - decayRate);
+          this.shotCount = Math.max(0, this.shotCount - (decayRate * this.maxShots));
+          this.updateOverheatBar(newProgress);
+        }
+
+        if (timeSinceLastShot >= this.shotResetDelay && this.shotCount > 0) {
+          this.shotCount = 0; // Resetear contador si pasó tiempo sin disparar
+          this.updateOverheatBar(0);
+        }
+      }
+    }
+  }
+
+  updateOverheatBar(progress, color = null) {
+    // Clamp progress entre 0 y 1
+    progress = Math.max(0, Math.min(1, progress));
+    this.overheatBarProgress = progress;
+
+    // Calcular ancho de la barra
+    const currentWidth = progress * this.overheatBarWidth;
+
+    // Cambiar color según el nivel de sobrecarga si no se especifica un color
+    if (color === null) {
+      if (progress >= 1.0) {
+        color = 0xff0000; // Rojo cuando está lleno
+      } else if (progress >= 0.75) {
+        color = 0xff6600; // Naranja
+      } else if (progress >= 0.5) {
+        color = 0xffff00; // Amarillo
+      } else if (progress >= 0.25) {
+        color = 0x88ff00; // Verde-amarillo
+      } else {
+        color = 0x00ff00; // Verde
+      }
+    }
+    this.overheatBarColor = color;
+
+    // Dibujar barra usando Graphics
+    this.overheatBarGraphics.clear();
+    if (currentWidth > 0) {
+      this.overheatBarGraphics.fillStyle(color, 1);
+      this.overheatBarGraphics.fillRect(this.overheatBarX, this.overheatBarY - this.overheatBarHeight / 2, currentWidth, this.overheatBarHeight);
+    }
+  }
+
+  cooldown() {
+    // Enfriar el arma
+    this.overheated = false;
+    this.cooldownTimer = 0;
+    this.shotCount = 0;
+
+    // Resetear barra de sobrecarga
+    this.updateOverheatBar(0);
+
+    // Ocultar mensaje "SIN TOKENS" con animación
+    this.tweens.add({
+      targets: this.overheatText,
+      alpha: 0,
+      scaleX: 0.8,
+      scaleY: 0.8,
+      duration: 300,
+      onComplete: () => {
+        this.overheatText.setVisible(false);
+        this.overheatText.setAlpha(1);
+        this.overheatText.setScale(1);
+      }
+    });
   }
 
   checkCollisions() {
@@ -530,7 +748,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Arial'
     });
     this.physics.add.existing(feature);
-    feature.body.setVelocityY(100);
+    feature.body.setVelocityY(180); // Más rápido que los bugs
     this.features.push(feature);
 
     bug.destroy();
@@ -581,9 +799,17 @@ class GameScene extends Phaser.Scene {
     this.productionRockets.splice(idx, 1);
 
     this.score += 100;
+    this.productionLaunches++; // Incrementar contador de salidas a producción
     this.scoreText.setText('Score: ' + this.score);
 
-    if (this.score >= 500) {
+    // Animación de parpadeo del Product Owner cuando recibe daño
+    this.blinkMothership();
+
+    // Actualizar dificultad basada en salidas a producción
+    this.updateDifficulty();
+
+    // Victoria basada en salidas a producción (después de pasar el nivel 10X Engineer = 15 salidas)
+    if (this.productionLaunches >= 15) {
       this.endGame(true);
     } else {
       this.playTone(300, 0.2);
@@ -630,14 +856,93 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  updateLivesHearts() {
+    // Crear string de corazones según las vidas restantes
+    const hearts = '❤️'.repeat(this.lives);
+    this.livesText.setText(hearts);
+  }
+
   loseLife() {
     this.lives--;
-    this.livesText.setText('Lives: ' + this.lives);
+    this.updateLivesHearts();
     this.playTone(200, 0.5);
+
+    // Animación de parpadeo rápido del jugador
+    this.blinkPlayer();
 
     if (this.lives <= 0) {
       this.endGame(false);
     }
+  }
+
+  blinkPlayer() {
+    // Parpadeo rápido: cambiar alpha varias veces
+    const blinkCount = 6; // Número de parpadeos
+    const blinkDuration = 100; // Duración de cada parpadeo en ms
+
+    // Asegurar que el jugador sea visible al inicio
+    this.playerContainer.setAlpha(1);
+
+    // Crear animación de parpadeo usando tween
+    let currentBlink = 0;
+    const doBlink = () => {
+      if (currentBlink < blinkCount) {
+        // Alternar entre visible e invisible
+        const targetAlpha = currentBlink % 2 === 0 ? 0.3 : 1;
+        this.tweens.add({
+          targets: this.playerContainer,
+          alpha: targetAlpha,
+          duration: blinkDuration,
+          onComplete: () => {
+            currentBlink++;
+            if (currentBlink < blinkCount) {
+              doBlink();
+            } else {
+              // Asegurar que termine visible
+              this.playerContainer.setAlpha(1);
+            }
+          }
+        });
+      }
+    };
+
+    doBlink();
+  }
+
+  blinkMothership() {
+    // Parpadeo rápido del Product Owner cuando recibe daño
+    const blinkCount = 6; // Número de parpadeos
+    const blinkDuration = 100; // Duración de cada parpadeo en ms
+
+    // Asegurar que el mothership y su texto sean visibles al inicio
+    this.mothership.setAlpha(1);
+    this.mothershipText.setAlpha(1);
+
+    // Crear animación de parpadeo usando tween para ambos objetos
+    let currentBlink = 0;
+    const doBlink = () => {
+      if (currentBlink < blinkCount) {
+        // Alternar entre visible e invisible
+        const targetAlpha = currentBlink % 2 === 0 ? 0.3 : 1;
+        this.tweens.add({
+          targets: [this.mothership, this.mothershipText],
+          alpha: targetAlpha,
+          duration: blinkDuration,
+          onComplete: () => {
+            currentBlink++;
+            if (currentBlink < blinkCount) {
+              doBlink();
+            } else {
+              // Asegurar que termine visible
+              this.mothership.setAlpha(1);
+              this.mothershipText.setAlpha(1);
+            }
+          }
+        });
+      }
+    };
+
+    doBlink();
   }
 
   endGame(victory) {
