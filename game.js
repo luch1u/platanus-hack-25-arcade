@@ -171,7 +171,8 @@ class SelectionScene extends Phaser.Scene {
       // Normalize keyboard input to arcade codes for easier testing
       const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
 
-      if (key === 'P2L' || event.key === 'ArrowLeft') {
+      // Izquierda: P2L (ArrowLeft) o P1L (A/WASD)
+      if (key === 'P2L' || key === 'P1L' || event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') {
         if (selectedBranch === 'mobile') {
           selectedBranch = 'frontend';
           this.selectedBox.setPosition(200, 300);
@@ -179,7 +180,9 @@ class SelectionScene extends Phaser.Scene {
           selectedBranch = 'mobile';
           this.selectedBox.setPosition(400, 300);
         }
-      } else if (key === 'P2R' || event.key === 'ArrowRight') {
+      }
+      // Derecha: P2R (ArrowRight) o P1R (D/WASD)
+      else if (key === 'P2R' || key === 'P1R' || event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') {
         if (selectedBranch === 'frontend') {
           selectedBranch = 'mobile';
           this.selectedBox.setPosition(400, 300);
@@ -390,7 +393,7 @@ class GameScene extends Phaser.Scene {
     this.overheatText.setVisible(false);
 
     // Instructions
-    this.add.text(400, 570, 'Arrows: Move | Space/Button A: Shoot | P/Button Y: Launch Rocket (5 features)', {
+    this.add.text(400, 570, 'Arrows: Move | U/Button A: Shoot | J/Button X: Launch Rocket (5 features)', {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#888888',
@@ -411,9 +414,9 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      if (key === 'P1A' || event.key === ' ') {
+      if (key === 'P1A' || event.key === 'u' || event.key === 'U') {
         this.shootBullet();
-      } else if ((key === 'P1Y' || event.key === 'p') && this.featureCount >= 5) {
+      } else if ((key === 'P1X' || event.key === 'j' || event.key === 'J') && this.featureCount >= 5) {
         this.launchProductionRocket();
       }
     });
@@ -978,7 +981,7 @@ class GameScene extends Phaser.Scene {
   }
 
   showProductionReady() {
-    this.productionReadyText.setText('🚀 LAUNCH TO\nPRODUCTION!\nPress P or Button Y');
+    this.productionReadyText.setText('🚀 LAUNCH TO\nPRODUCTION!\nPress J or Button X');
     this.productionReadyText.setVisible(true);
 
     // Add pulsing effect
