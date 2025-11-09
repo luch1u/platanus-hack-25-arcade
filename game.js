@@ -25,8 +25,6 @@ const ARCADE_CONTROLS = {
   'P1D': ['s'],
   'P1L': ['a'],
   'P1R': ['d'],
-  'P1DL': null,  // Diagonal down-left (no keyboard default)
-  'P1DR': null,  // Diagonal down-right (no keyboard default)
 
   // Action Buttons - Right hand on home row area (ergonomic!)
   // Top row (ABC): U, I, O  |  Bottom row (XYZ): J, K, L
@@ -46,8 +44,6 @@ const ARCADE_CONTROLS = {
   'P2D': ['ArrowDown'],
   'P2L': ['ArrowLeft'],
   'P2R': ['ArrowRight'],
-  'P2DL': null,  // Diagonal down-left (no keyboard default)
-  'P2DR': null,  // Diagonal down-right (no keyboard default)
 
   // Action Buttons - Left hand (avoiding P1's WASD keys)
   // Top row (ABC): R, T, Y  |  Bottom row (XYZ): F, G, H
