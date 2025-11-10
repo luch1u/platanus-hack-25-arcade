@@ -400,6 +400,9 @@ class GameScene extends Phaser.Scene {
     // Crear fondo tipo matrix/hacker con letras cayendo
     this.createMatrixBackground();
 
+    // Iniciar música de fondo procedural
+    this.startBackgroundMusic();
+
     // Create player with selected branch icon
     this.playerContainer = this.add.container(400, 550);
     this.physics.world.enable(this.playerContainer);
@@ -1163,6 +1166,7 @@ class GameScene extends Phaser.Scene {
 
   endGame(victory) {
     this.gameOver = true;
+    this.stopBackgroundMusic();
 
     const overlay = this.add.graphics();
     overlay.fillStyle(0x000000, 0.8);
@@ -1216,6 +1220,95 @@ class GameScene extends Phaser.Scene {
 
   restartGame() {
     this.scene.start('SelectionScene');
+  }
+
+  startBackgroundMusic() {
+    const audioContext = this.sound.context;
+    this.bgMusicPlaying = true;
+
+    // Frecuencias para música 8-bit/chiptune
+    const notes = {
+      C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+      C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+      C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+      C6: 1046.50
+    };
+
+    // Melodía principal 8-bit (simple y pegadiza)
+    const melody = [
+      { note: notes.C5, duration: 0.25, start: 0.0 },
+      { note: notes.E5, duration: 0.25, start: 0.25 },
+      { note: notes.G5, duration: 0.25, start: 0.5 },
+      { note: notes.C6, duration: 0.5, start: 0.75 },
+      { note: notes.G5, duration: 0.25, start: 1.25 },
+      { note: notes.E5, duration: 0.25, start: 1.5 },
+      { note: notes.C5, duration: 0.5, start: 1.75 },
+      { note: notes.A4, duration: 0.25, start: 2.25 },
+      { note: notes.C5, duration: 0.25, start: 2.5 },
+      { note: notes.E5, duration: 0.5, start: 2.75 },
+      { note: notes.D5, duration: 0.25, start: 3.25 },
+      { note: notes.C5, duration: 0.5, start: 3.5 }
+    ];
+
+    // Línea de bajo 8-bit (triangle wave para sonido auténtico)
+    const bass = [
+      { note: notes.C3, duration: 0.5, start: 0.0 },
+      { note: notes.C3, duration: 0.5, start: 0.5 },
+      { note: notes.G3, duration: 0.5, start: 1.0 },
+      { note: notes.G3, duration: 0.5, start: 1.5 },
+      { note: notes.A3, duration: 0.5, start: 2.0 },
+      { note: notes.A3, duration: 0.5, start: 2.5 },
+      { note: notes.G3, duration: 0.5, start: 3.0 },
+      { note: notes.C3, duration: 0.5, start: 3.5 }
+    ];
+
+    const loopDuration = 4.0; // Loop de 4 segundos
+
+    const playLoop = () => {
+      if (!this.bgMusicPlaying) return;
+
+      const baseTime = audioContext.currentTime;
+
+      // Reproducir melodía principal (square wave - típico 8-bit)
+      melody.forEach((m) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = m.note;
+        osc.type = 'square'; // Square wave clásico 8-bit
+        const noteStart = baseTime + m.start;
+        gain.gain.setValueAtTime(0.12, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + m.duration);
+        osc.start(noteStart);
+        osc.stop(noteStart + m.duration);
+      });
+
+      // Reproducir línea de bajo (triangle wave - auténtico 8-bit)
+      bass.forEach((b) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = b.note;
+        osc.type = 'triangle'; // Triangle wave para bajo 8-bit
+        const noteStart = baseTime + b.start;
+        gain.gain.setValueAtTime(0.15, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + b.duration);
+        osc.start(noteStart);
+        osc.stop(noteStart + b.duration);
+      });
+
+      // Programar siguiente loop
+      this.time.delayedCall(loopDuration * 1000, playLoop);
+    };
+
+    // Iniciar primer loop
+    playLoop();
+  }
+
+  stopBackgroundMusic() {
+    this.bgMusicPlaying = false;
   }
 
   playTone(frequency, duration) {
