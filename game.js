@@ -77,6 +77,124 @@ const INTELLIJ_SPRITESHEET = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAA
 const INTELLIJ_FRAME_SIZE = { w: 16, h: 16 };
 let selectedBranch = 'frontend'; // frontend, mobile, backend
 
+// Title Scene
+class TitleScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'TitleScene' });
+  }
+
+  create() {
+    // Crear fondo tipo matrix/hacker
+    this.createMatrixBackground();
+
+    // Título principal con estilo matrix/hacker
+    this.titleText = this.add.text(400, 200, "It's not a bug,\nit's a feature", {
+      fontSize: '48px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center',
+      stroke: '#00ff00',
+      strokeThickness: 2,
+      shadow: {
+        offsetX: 0,
+        offsetY: 0,
+        color: '#00ff00',
+        blur: 10,
+        stroke: true,
+        fill: true
+      }
+    }).setOrigin(0.5);
+
+    // Efecto de glitch/parpadeo sutil en el título
+    this.time.addEvent({
+      delay: 150,
+      callback: () => {
+        const currentAlpha = this.titleText.alpha;
+        this.titleText.setAlpha(currentAlpha === 1 ? 0.98 : 1);
+      },
+      loop: true
+    });
+
+    // Animación de zoom in/out (rebote) más visible
+    this.tweens.add({
+      targets: this.titleText,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 2000,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Mensaje de presionar start
+    this.startText = this.add.text(400, 400, 'Press START to Continue', {
+      fontSize: '24px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Animación de parpadeo para el texto de start
+    this.tweens.add({
+      targets: this.startText,
+      alpha: 0.3,
+      duration: 800,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Escuchar teclas para iniciar
+    this.input.keyboard.on('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      const arcadeCode = KEYBOARD_TO_ARCADE[key] || KEYBOARD_TO_ARCADE[event.code];
+
+      if (arcadeCode === 'START1' || key === ' ' || key === 'enter' || event.code === 'Space' || event.code === 'Enter') {
+        this.scene.start('SelectionScene');
+      }
+    });
+  }
+
+  createMatrixBackground() {
+    this.matrixChars = [];
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const screenWidth = 800;
+    const screenHeight = 600;
+    const columnWidth = 20;
+    const columns = Math.floor(screenWidth / columnWidth); // ~40 columnas
+    const charsPerColumn = 3; // Múltiples caracteres por columna para más densidad
+    const totalChars = columns * charsPerColumn;
+
+    for (let i = 0; i < totalChars; i++) {
+      const columnIndex = Math.floor(i / charsPerColumn);
+      const x = columnIndex * columnWidth + (columnWidth / 2);
+      const y = Math.random() * screenHeight;
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const speed = 50 + Math.random() * 100;
+
+      const text = this.add.text(x, y, char, {
+        fontSize: '16px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        alpha: 0.3
+      }).setOrigin(0.5);
+
+      this.matrixChars.push({ text, speed, x });
+    }
+  }
+
+  update() {
+    // Animar caracteres matrix cayendo
+    const screenHeight = 600;
+    this.matrixChars.forEach((char) => {
+      char.text.y += char.speed * (this.game.loop.delta / 1000);
+      if (char.text.y > screenHeight) {
+        char.text.y = -20;
+      }
+    });
+  }
+}
+
 // Selection Scene
 class SelectionScene extends Phaser.Scene {
   constructor() {
@@ -101,12 +219,6 @@ class SelectionScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.text(400, 100, "It's not a bug, it's a feature!", {
-      fontSize: '32px',
-      fontFamily: 'Arial',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
     this.add.text(400, 160, 'Elije tu editor de código', {
       fontSize: '24px',
       fontFamily: 'Arial',
@@ -150,10 +262,20 @@ class SelectionScene extends Phaser.Scene {
       color: '#888888'
     }).setOrigin(0.5);
 
-    this.selectedBox = this.add.rectangle(200, 300, 80, 80);
+    this.selectedBox = this.add.rectangle(200, 300, 84, 84);
     this.selectedBox.setStrokeStyle(3, 0xffff00);
 
-    this.add.text(400, 500, 'Press SPACE or ENTER to start', {
+    // Animación de parpadeo para el cuadro de selección
+    this.tweens.add({
+      targets: this.selectedBox,
+      alpha: 0.3,
+      duration: 600,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+
+    this.add.text(400, 500, 'Press U or ENTER to start', {
       fontSize: '18px',
       fontFamily: 'Arial',
       color: '#ffff00'
@@ -196,7 +318,7 @@ class SelectionScene extends Phaser.Scene {
           selectedBranch = 'backend';
           this.selectedBox.setPosition(600, 300);
         }
-      } else if (key === 'START1' || event.key === ' ' || event.key === 'Enter') {
+      } else if (key === 'START1' || event.key === 'u' || event.key === 'U' || event.key === 'Enter') {
         this.startCountdown();
       }
       // Easter egg: Detectar 5 presiones de J seguidas
@@ -399,6 +521,9 @@ class GameScene extends Phaser.Scene {
   create() {
     // Crear fondo tipo matrix/hacker con letras cayendo
     this.createMatrixBackground();
+
+    // Tempo de música (base: 4.0 segundos, se acelera con el nivel)
+    this.musicTempo = 4.0; // Duración base del loop en segundos
 
     // Iniciar música de fondo procedural
     this.startBackgroundMusic();
@@ -652,6 +777,10 @@ class GameScene extends Phaser.Scene {
       const level = this.levels[this.currentLevel];
       this.mothershipSpeed = level.speed;
       this.levelText.setText('Level: ' + level.name);
+
+      // Acelerar tempo de música (reducir duración del loop)
+      // Cada nivel reduce el tempo en 0.2 segundos (música más rápida)
+      this.musicTempo = Math.max(3.0, 4.0 - (this.currentLevel * 0.2));
 
       // Mostrar mensaje grande de nivel
       this.showLevelUpMessage(level.name);
@@ -1262,41 +1391,49 @@ class GameScene extends Phaser.Scene {
       { note: notes.C3, duration: 0.5, start: 3.5 }
     ];
 
-    const loopDuration = 4.0; // Loop de 4 segundos
-
     const playLoop = () => {
       if (!this.bgMusicPlaying) return;
 
       const baseTime = audioContext.currentTime;
+      const loopDuration = this.musicTempo; // Usar tempo dinámico basado en el nivel
+      const tempoScale = loopDuration / 4.0; // Factor de escala basado en tempo base de 4.0
 
       // Reproducir melodía principal (square wave - típico 8-bit)
-      melody.forEach((m) => {
+      melody.forEach((m, index) => {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
         osc.connect(gain);
         gain.connect(audioContext.destination);
         osc.frequency.value = m.note;
         osc.type = 'square'; // Square wave clásico 8-bit
-        const noteStart = baseTime + m.start;
+        const noteStart = baseTime + (m.start * tempoScale);
+        const noteDuration = m.duration * tempoScale;
+        // Si es la última nota, extenderla hasta el final del loop
+        const isLastNote = index === melody.length - 1;
+        const finalDuration = isLastNote ? (loopDuration - (m.start * tempoScale)) : noteDuration;
         gain.gain.setValueAtTime(0.12, noteStart);
-        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + m.duration);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + finalDuration);
         osc.start(noteStart);
-        osc.stop(noteStart + m.duration);
+        osc.stop(noteStart + finalDuration);
       });
 
       // Reproducir línea de bajo (triangle wave - auténtico 8-bit)
-      bass.forEach((b) => {
+      bass.forEach((b, index) => {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
         osc.connect(gain);
         gain.connect(audioContext.destination);
         osc.frequency.value = b.note;
         osc.type = 'triangle'; // Triangle wave para bajo 8-bit
-        const noteStart = baseTime + b.start;
+        const noteStart = baseTime + (b.start * tempoScale);
+        const noteDuration = b.duration * tempoScale;
+        // Si es la última nota, extenderla hasta el final del loop
+        const isLastNote = index === bass.length - 1;
+        const finalDuration = isLastNote ? (loopDuration - (b.start * tempoScale)) : noteDuration;
         gain.gain.setValueAtTime(0.15, noteStart);
-        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + b.duration);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + finalDuration);
         osc.start(noteStart);
-        osc.stop(noteStart + b.duration);
+        osc.stop(noteStart + finalDuration);
       });
 
       // Programar siguiente loop
@@ -1344,7 +1481,7 @@ const config = {
       debug: false
     }
   },
-  scene: [SelectionScene, GameScene]
+  scene: [TitleScene, SelectionScene, GameScene]
 };
 
 const game = new Phaser.Game(config);
