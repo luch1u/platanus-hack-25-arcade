@@ -164,6 +164,12 @@ class SelectionScene extends Phaser.Scene {
     this.countdownText = null;
     this.countdownTimer = 0;
 
+    // Easter egg: Samsung washing machine melody
+    this.easterEggPressCount = 0;
+    this.easterEggLastPressTime = 0;
+    this.easterEggResetDelay = 2000; // 2 segundos para resetear contador
+    this.easterEggPlaying = false;
+
     // Keyboard and Arcade Button input
     this.input.keyboard.on('keydown', (event) => {
       if (this.countdownActive) return; // Disable input during countdown
@@ -192,6 +198,24 @@ class SelectionScene extends Phaser.Scene {
         }
       } else if (key === 'START1' || event.key === ' ' || event.key === 'Enter') {
         this.startCountdown();
+      }
+      // Easter egg: Detectar 5 presiones de J seguidas
+      else if ((key === 'P1X' || event.key === 'j' || event.key === 'J') && !this.easterEggPlaying) {
+        const currentTime = this.time.now;
+
+        // Resetear contador si pasó mucho tiempo desde la última presión
+        if (this.easterEggLastPressTime > 0 && currentTime - this.easterEggLastPressTime > this.easterEggResetDelay) {
+          this.easterEggPressCount = 0;
+        }
+
+        this.easterEggPressCount++;
+        this.easterEggLastPressTime = currentTime;
+
+        // Si se presionó 5 veces, reproducir melodía Samsung
+        if (this.easterEggPressCount >= 5) {
+          this.playSamsungMelody();
+          this.easterEggPressCount = 0;
+        }
       }
     });
   }
@@ -238,6 +262,121 @@ class SelectionScene extends Phaser.Scene {
     this.countdownTimer = 3;
   }
 
+  playSamsungMelody() {
+    if (this.easterEggPlaying) return; // Evitar reproducir múltiples veces
+
+    this.easterEggPlaying = true;
+
+    // Frecuencias musicales basadas en la partitura (E major, todas las octavas necesarias)
+    const notes = {
+      // Octava 3
+      B3: 246.94,   // Si3
+      // Octava 4
+      C4s: 277.18,  // Do#4
+      D4s: 311.13,  // Re#4
+      E4: 329.63,   // Mi4
+      F4s: 369.99,  // Fa#4
+      G4s: 415.30,  // Sol#4
+      Ab4: 415.30,  // La bemol 4 (misma frecuencia que Sol#4)
+      A4: 440.00,   // La4
+      B4: 493.88,   // Si4
+      // Octava 5
+      C5s: 554.37,  // Do#5
+      D5s: 622.25,  // Re#5
+      E5: 659.25,   // Mi5
+      F5s: 739.99,  // Fa#5
+      G5s: 830.61,  // Sol#5
+      A5: 880.00,   // La5
+      B5: 987.77,   // Si5
+      // Octava 6
+      C6s: 1108.73, // Do#6
+      D6s: 1244.51  // Re#6
+    };
+
+    // Duración base a 120 BPM: 1 beat = 500ms, 0.5 beats = 250ms, 0.25 beats = 125ms
+    const beat = 500;  // 1 beat = 500ms a 120 BPM
+    const eighthNote = 250;  // 0.5 beats = 250ms
+    const quarterNote = 500;  // 1.0 beats = 500ms
+    const sixteenthNote = 125;  // 0.25 beats = 125ms
+
+    // Melodía Samsung según la secuencia proporcionada
+    // E (0.5), A (0.5), A (0.5), C# (0.5), C# (0.5), A (1.0), E (0.5), E(0.5), E(1.0), E(0.25), B(0.25), A(0.25), Ab(0.25), F#(0.25), E(1.0)
+    const melodyData = [
+      { pitch: 'E', octave: 4, duration: 0.5, startTime: 0.0 },
+      { pitch: 'A', octave: 4, duration: 0.5, startTime: 0.5 },
+      { pitch: 'A', octave: 4, duration: 0.5, startTime: 1.0 },
+      { pitch: 'C#', octave: 5, duration: 0.5, startTime: 1.5 },
+      { pitch: 'C#', octave: 5, duration: 0.5, startTime: 2.0 },
+      { pitch: 'A', octave: 4, duration: 1.0, startTime: 2.5 },
+      { pitch: 'E', octave: 4, duration: 0.5, startTime: 3.5 },
+      { pitch: 'E', octave: 4, duration: 0.5, startTime: 4.0 },
+      { pitch: 'E', octave: 4, duration: 1.0, startTime: 4.5 },
+      { pitch: 'E', octave: 4, duration: 0.25, startTime: 5.5 },
+      { pitch: 'B', octave: 4, duration: 0.25, startTime: 5.75 },
+      { pitch: 'A', octave: 4, duration: 0.25, startTime: 6.0 },
+      { pitch: 'Ab', octave: 4, duration: 0.25, startTime: 6.25 },
+      { pitch: 'F#', octave: 4, duration: 0.25, startTime: 6.5 },
+      { pitch: 'E', octave: 4, duration: 1.0, startTime: 6.75 }
+    ];
+
+    // Mapeo de notas a frecuencias
+    const pitchMap = {
+      'E': { 4: notes.E4, 5: notes.E5 },
+      'A': { 4: notes.A4, 5: notes.A5 },
+      'C#': { 4: notes.C4s, 5: notes.C5s },
+      'B': { 4: notes.B4, 5: notes.B5 },
+      'G#': { 4: notes.G4s, 5: notes.G5s },
+      'F#': { 4: notes.F4s, 5: notes.F5s },
+      'D#': { 4: notes.D4s, 5: notes.D5s },
+      'Ab': { 4: notes.Ab4, 5: notes.Ab4 } // Ab4 solo en octava 4
+    };
+
+    // Reproducir cada nota usando el tiempo acumulativo (startTime)
+    let maxEndTime = 0;
+    melodyData.forEach((note) => {
+      if (note.pitch === null) {
+        // Es un silencio, no hacemos nada
+        return;
+      }
+
+      const frequency = pitchMap[note.pitch][note.octave];
+      const durationMs = note.duration * beat;
+      const startTimeMs = note.startTime * beat;
+      const endTime = startTimeMs + durationMs;
+
+      if (endTime > maxEndTime) {
+        maxEndTime = endTime;
+      }
+
+      this.time.delayedCall(startTimeMs, () => {
+        this.playTone(frequency, durationMs / 1000);
+      });
+    });
+
+    // Resetear flag después de que termine la melodía
+    this.time.delayedCall(maxEndTime + 100, () => {
+      this.easterEggPlaying = false;
+    });
+  }
+
+  playTone(frequency, duration) {
+    const audioContext = this.sound.context;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine'; // Usar sine para un sonido más suave
+
+    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  }
+
   update(time, delta) {
     if (this.countdownActive && this.countdownTimer > 0) {
       this.countdownTimer -= delta / 1000;
@@ -258,6 +397,9 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Crear fondo tipo matrix/hacker con letras cayendo
+    this.createMatrixBackground();
+
     // Create player with selected branch icon
     this.playerContainer = this.add.container(400, 550);
     this.physics.world.enable(this.playerContainer);
@@ -422,6 +564,74 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  createMatrixBackground() {
+    // Caracteres estilo hacker/matrix
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+
+    // Configuración del efecto matrix
+    this.matrixColumns = [];
+    this.matrixCharSize = 14;
+    this.matrixSpeed = 50; // Velocidad de caída
+    this.matrixColumnWidth = 15; // Espacio entre columnas (reducido para más densidad)
+    this.matrixColumnsCount = Math.floor(800 / this.matrixColumnWidth) + 5; // Más columnas para cubrir mejor
+
+    // Crear columnas de letras cayendo
+    for (let i = 0; i < this.matrixColumnsCount; i++) {
+      const column = {
+        x: i * this.matrixColumnWidth,
+        y: -Math.random() * 600, // Empezar en diferentes alturas
+        chars: [],
+        charCount: Math.floor(Math.random() * 20) + 15, // 15-35 caracteres por columna (más caracteres)
+        speed: this.matrixSpeed + Math.random() * 30 // Variar velocidad
+      };
+
+      // Crear caracteres para esta columna
+      for (let j = 0; j < column.charCount; j++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const charText = this.add.text(column.x, column.y - j * this.matrixCharSize, char, {
+          fontSize: this.matrixCharSize + 'px',
+          fontFamily: 'Courier New, monospace',
+          color: '#00ff00',
+          alpha: 0.15 // Muy sutil y semitransparente
+        });
+        charText.setDepth(-1); // Atrás de todo
+        column.chars.push(charText);
+      }
+
+      this.matrixColumns.push(column);
+    }
+  }
+
+  updateMatrixBackground(delta) {
+    if (!this.matrixColumns) return;
+
+    // Actualizar cada columna
+    for (let column of this.matrixColumns) {
+      column.y += column.speed * (delta / 1000);
+
+      // Si la columna sale de la pantalla, reiniciarla arriba
+      if (column.y > 600 + column.charCount * this.matrixCharSize) {
+        column.y = -column.charCount * this.matrixCharSize;
+        // Cambiar algunos caracteres aleatoriamente
+        const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+        for (let i = 0; i < column.chars.length; i++) {
+          if (Math.random() < 0.3) { // 30% de probabilidad de cambiar
+            column.chars[i].setText(chars[Math.floor(Math.random() * chars.length)]);
+          }
+        }
+      }
+
+      // Actualizar posición de cada carácter
+      for (let i = 0; i < column.chars.length; i++) {
+        column.chars[i].y = column.y - i * this.matrixCharSize;
+
+        // Efecto de fade: los caracteres más abajo son más brillantes
+        const fadePos = i / column.chars.length;
+        column.chars[i].setAlpha(0.15 * (1 - fadePos * 0.5)); // Más transparente arriba
+      }
+    }
+  }
+
   getCurrentLevel() {
     // Find the highest level the player has reached based on production launches
     for (let i = this.levels.length - 1; i >= 0; i--) {
@@ -513,6 +723,9 @@ class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.gameOver) return;
+
+    // Actualizar fondo tipo matrix
+    this.updateMatrixBackground(delta);
 
     // Move player (support both keyboard and arcade controls)
     if ((this.cursors.left.isDown || this.wasd.A.isDown) && this.playerContainer.x > 40) {
