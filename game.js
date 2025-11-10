@@ -88,7 +88,7 @@ class TitleScene extends Phaser.Scene {
     this.createMatrixBackground();
 
     // Título principal con estilo matrix/hacker
-    this.titleText = this.add.text(400, 200, "It's not a bug,\nit's a feature", {
+    this.titleText = this.add.text(400, 150, "It's not a bug,\nit's a feature", {
       fontSize: '48px',
       fontFamily: 'Courier New, monospace',
       color: '#00ff00',
@@ -126,8 +126,11 @@ class TitleScene extends Phaser.Scene {
       repeat: -1
     });
 
+    // Mostrar top 3 del leaderboard
+    this.displayTopScores();
+
     // Mensaje de presionar start
-    this.startText = this.add.text(400, 400, 'Press START to Continue', {
+    this.startText = this.add.text(400, 500, 'Press START to Continue', {
       fontSize: '24px',
       fontFamily: 'Courier New, monospace',
       color: '#00ff00',
@@ -150,9 +153,202 @@ class TitleScene extends Phaser.Scene {
       const arcadeCode = KEYBOARD_TO_ARCADE[key] || KEYBOARD_TO_ARCADE[event.code];
 
       if (arcadeCode === 'START1' || key === ' ' || key === 'enter' || event.code === 'Space' || event.code === 'Enter') {
+        this.stopTitleMusic();
         this.scene.start('InstructionsScene');
       }
     });
+
+    // Iniciar música del título
+    this.startTitleMusic();
+  }
+
+  startTitleMusic() {
+    const audioContext = this.sound.context;
+    this.titleMusicPlaying = true;
+
+    // Frecuencias para música 8-bit/chiptune
+    const notes = {
+      E2: 82.41, E3: 164.81, E4: 329.63,
+      F4: 349.23,
+      G3: 196.00, G4: 392.00,
+      A3: 220.00, A4: 440.00,
+      B3: 246.94, B4: 493.88
+    };
+
+    // Track 1: Square wave - Melodía principal mezclada
+    // Patrón variado que se mezcla pero mantiene armonía
+    const squareMelody = [
+      // Primera parte: sube
+      { note: notes.E4, duration: 0.25, start: 0.0 },
+      { note: notes.F4, duration: 0.25, start: 0.25 },
+      { note: notes.G4, duration: 0.25, start: 0.5 },
+      { note: notes.A4, duration: 0.25, start: 0.75 },
+      { note: notes.B4, duration: 0.5, start: 1.0 },
+      // Segunda parte: mezcla - sube pero con variación
+      { note: notes.G4, duration: 0.25, start: 1.5 },
+      { note: notes.A4, duration: 0.25, start: 1.75 },
+      { note: notes.B4, duration: 0.25, start: 2.0 },
+      { note: notes.A4, duration: 0.25, start: 2.25 },
+      { note: notes.G4, duration: 0.5, start: 2.5 },
+      // Tercera parte: mezcla - baja con variación
+      { note: notes.B4, duration: 0.25, start: 3.0 },
+      { note: notes.A4, duration: 0.25, start: 3.25 },
+      { note: notes.G4, duration: 0.25, start: 3.5 },
+      { note: notes.F4, duration: 0.25, start: 3.75 },
+      { note: notes.E4, duration: 0.5, start: 4.0 },
+      // Cuarta parte: mezcla - sube y baja
+      { note: notes.E4, duration: 0.25, start: 4.5 },
+      { note: notes.G4, duration: 0.25, start: 4.75 },
+      { note: notes.A4, duration: 0.25, start: 5.0 },
+      { note: notes.G4, duration: 0.25, start: 5.25 },
+      { note: notes.E4, duration: 0.5, start: 5.5 } // Termina en E4 para conectar con el loop
+    ];
+
+    // Track 2: Sawtooth wave - Armonía mezclada
+    // Se mezcla con la melodía pero mantiene el ritmo
+    const sawtoothHarmony = [
+      { note: notes.E3, duration: 0.5, start: 0.0 },
+      { note: notes.G3, duration: 0.5, start: 0.5 },
+      { note: notes.A3, duration: 0.5, start: 1.0 },
+      { note: notes.B3, duration: 0.5, start: 1.5 },
+      { note: notes.A3, duration: 0.5, start: 2.0 },
+      { note: notes.G3, duration: 0.5, start: 2.5 },
+      { note: notes.B3, duration: 0.5, start: 3.0 },
+      { note: notes.A3, duration: 0.5, start: 3.5 },
+      { note: notes.G3, duration: 0.5, start: 4.0 },
+      { note: notes.E3, duration: 0.5, start: 4.5 },
+      { note: notes.G3, duration: 0.5, start: 5.0 },
+      { note: notes.E3, duration: 0.5, start: 5.5 } // Termina en E3 para conectar con el loop
+    ];
+
+    // Track 3: Triangle wave - Bajo con ritmo constante original
+    // Mantiene el pulso constante como estaba antes
+    const triangleBass = [
+      { note: notes.E2, duration: 0.5, start: 0.0 },
+      { note: notes.E2, duration: 0.5, start: 0.5 },
+      { note: notes.E2, duration: 0.5, start: 1.0 },
+      { note: notes.E2, duration: 0.5, start: 1.5 },
+      { note: notes.E2, duration: 0.5, start: 2.0 },
+      { note: notes.E2, duration: 0.5, start: 2.5 },
+      { note: notes.E2, duration: 0.5, start: 3.0 },
+      { note: notes.E2, duration: 0.5, start: 3.5 },
+      { note: notes.E2, duration: 0.5, start: 4.0 },
+      { note: notes.E2, duration: 0.5, start: 4.5 },
+      { note: notes.E2, duration: 0.5, start: 5.0 },
+      { note: notes.E2, duration: 0.5, start: 5.5 } // Termina en E2 para conectar con el loop
+    ];
+
+    const loopDuration = 6.0; // Duración del loop completo - termina donde empezó para conexión perfecta
+
+    const playLoop = () => {
+      if (!this.titleMusicPlaying) return;
+
+      const baseTime = audioContext.currentTime;
+
+      // Reproducir Track 1: Square wave (melodía principal)
+      squareMelody.forEach((m) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = m.note;
+        osc.type = 'square'; // Square wave para melodía
+        const noteStart = baseTime + m.start;
+        const noteDuration = m.duration;
+        gain.gain.setValueAtTime(0.12, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + noteDuration);
+        osc.start(noteStart);
+        osc.stop(noteStart + noteDuration);
+      });
+
+      // Reproducir Track 2: Sawtooth wave (armonía)
+      sawtoothHarmony.forEach((h) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = h.note;
+        osc.type = 'sawtooth'; // Sawtooth wave para armonía
+        const noteStart = baseTime + h.start;
+        const noteDuration = h.duration;
+        gain.gain.setValueAtTime(0.10, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + noteDuration);
+        osc.start(noteStart);
+        osc.stop(noteStart + noteDuration);
+      });
+
+      // Reproducir Track 3: Triangle wave (bajo)
+      triangleBass.forEach((b) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = b.note;
+        osc.type = 'triangle'; // Triangle wave para bajo
+        const noteStart = baseTime + b.start;
+        const noteDuration = b.duration;
+        gain.gain.setValueAtTime(0.15, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.01, noteStart + noteDuration);
+        osc.start(noteStart);
+        osc.stop(noteStart + noteDuration);
+      });
+
+      // Programar siguiente loop
+      this.time.delayedCall(loopDuration * 1000, playLoop);
+    };
+
+    // Iniciar primer loop
+    playLoop();
+  }
+
+  stopTitleMusic() {
+    this.titleMusicPlaying = false;
+  }
+
+  loadLeaderboard() {
+    try {
+      const stored = localStorage.getItem('bugToFeatureLeaderboard');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  displayTopScores() {
+    const leaderboard = this.loadLeaderboard();
+    const top3 = leaderboard.slice(0, 3);
+
+    // Título del leaderboard
+    this.add.text(400, 280, 'HIGH SCORES', {
+      fontSize: '20px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Mostrar top 3
+    for (let i = 0; i < 3; i++) {
+      const y = 320 + (i * 30);
+      let displayText;
+
+      if (i < top3.length) {
+        const entry = top3[i];
+        const minutes = Math.floor(entry.time / 60);
+        const seconds = entry.time % 60;
+        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        displayText = `${i + 1}. ${entry.initials} ${timeString}`;
+      } else {
+        displayText = `${i + 1}. _ _ _ 99:99`;
+      }
+
+      const color = i === 0 && top3.length > 0 ? '#ffff00' : '#ffffff';
+      this.add.text(400, y, displayText, {
+        fontSize: '18px',
+        fontFamily: 'Courier New, monospace',
+        color: color,
+        align: 'center'
+      }).setOrigin(0.5);
+    }
   }
 
   createMatrixBackground() {
@@ -658,6 +854,463 @@ class SelectionScene extends Phaser.Scene {
   }
 }
 
+// Leaderboard Scene
+class LeaderboardScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'LeaderboardScene' });
+  }
+
+  init(data) {
+    this.currentScore = data.score || 0;
+    this.currentTime = data.time || 0;
+    this.victory = data.victory || false;
+    this.initials = [];
+    // Solo permitir ingresar iniciales si hay victoria
+    this.enteringInitials = this.victory;
+    this.currentInitialIndex = 0; // Índice de la inicial actual (0, 1, 2)
+    this.currentLetterIndex = 0; // Índice de la letra actual en el alfabeto (0-25 para A-Z)
+    this.letterSelectDelay = 0; // Delay para evitar selección muy rápida
+    this.letterSelectCooldown = 150; // Cooldown en ms entre cambios de letra
+  }
+
+  create() {
+    // Crear fondo tipo matrix/hacker
+    this.createMatrixBackground();
+
+    // Título
+    if (this.victory) {
+      this.add.text(400, 60, 'VICTORY!', {
+        fontSize: '36px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        align: 'center'
+      }).setOrigin(0.5);
+    } else {
+      // YOU'RE FIRED estilo fax de Volver al Futuro 2
+      this.youreFiredText = this.add.text(400, 60, '', {
+        fontSize: '42px',
+        fontFamily: 'Courier New, monospace',
+        color: '#ff0000',
+        align: 'center',
+        fontWeight: 'bold'
+      }).setOrigin(0.5);
+      
+      // Animación tipo fax: mostrar letra por letra
+      const text = "YOU'RE FIRED";
+      let charIndex = 0;
+      const startFreq = 400; // Frecuencia inicial
+      const endFreq = 150; // Frecuencia final (más grave/depresivo)
+      this.time.addEvent({
+        delay: 150, // Delay entre cada letra
+        callback: () => {
+          if (charIndex < text.length) {
+            this.youreFiredText.setText(text.substring(0, charIndex + 1));
+            charIndex++;
+            // Sonido depresivo: tonos descendentes (como una noticia mala)
+            const progress = charIndex / text.length;
+            const frequency = startFreq - (startFreq - endFreq) * progress;
+            this.playTone(frequency, 0.08);
+          }
+        },
+        repeat: text.length - 1
+      });
+    }
+
+    // Mostrar puntaje y tiempo actual
+    const minutes = Math.floor(this.currentTime / 60);
+    const seconds = this.currentTime % 60;
+    const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    this.add.text(400, 110, `Score: ${this.currentScore}`, {
+      fontSize: '24px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 140, `Time: ${timeString}`, {
+      fontSize: '24px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Solo mostrar opción de ingresar iniciales si hay victoria
+    if (this.victory) {
+      // Ingresar iniciales con selector estilo arcade
+      this.add.text(400, 220, 'Enter Initials:', {
+        fontSize: '20px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        align: 'center'
+      }).setOrigin(0.5);
+
+      // Mostrar las 3 iniciales con selector
+      this.initialsTexts = [];
+      this.letterSelectors = [];
+      for (let i = 0; i < 3; i++) {
+        const x = 300 + (i * 100);
+        const y = 260;
+        
+        // Texto de la inicial seleccionada
+        const initialText = this.add.text(x, y, '_', {
+          fontSize: '32px',
+          fontFamily: 'Courier New, monospace',
+          color: '#ffffff',
+          align: 'center'
+        }).setOrigin(0.5);
+        this.initialsTexts.push(initialText);
+
+        // Selector de letra (flecha o indicador)
+        const selector = this.add.text(x, y - 40, '▼', {
+          fontSize: '20px',
+          fontFamily: 'Courier New, monospace',
+          color: '#ffff00',
+          align: 'center'
+        }).setOrigin(0.5);
+        selector.setVisible(i === 0); // Solo mostrar en la primera inicial
+        this.letterSelectors.push(selector);
+      }
+
+      // Letra actual mostrada arriba del selector
+      this.currentLetterText = this.add.text(400, 200, 'A', {
+        fontSize: '48px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        align: 'center'
+      }).setOrigin(0.5);
+
+      // Inicializar display de letra actual
+      this.updateCurrentLetterDisplay();
+
+      // Instrucciones para victoria
+      this.add.text(400, 320, 'Use Joystick: Left/Right to change letter', {
+        fontSize: '14px',
+        fontFamily: 'Courier New, monospace',
+        color: '#888888',
+        align: 'center'
+      }).setOrigin(0.5);
+
+      this.add.text(400, 340, 'Press U to select letter, then move to next', {
+        fontSize: '14px',
+        fontFamily: 'Courier New, monospace',
+        color: '#888888',
+        align: 'center'
+      }).setOrigin(0.5);
+
+      this.add.text(400, 360, 'Press ENTER when all 3 letters selected', {
+        fontSize: '14px',
+        fontFamily: 'Courier New, monospace',
+        color: '#888888',
+        align: 'center'
+      }).setOrigin(0.5);
+    } else {
+      // Mensaje para game over (sin victoria)
+      this.add.text(400, 220, 'You need to win to add your score!', {
+        fontSize: '20px',
+        fontFamily: 'Courier New, monospace',
+        color: '#ff0000',
+        align: 'center'
+      }).setOrigin(0.5);
+    }
+
+    // Cargar y mostrar tabla de posiciones (más abajo)
+    this.loadLeaderboard();
+    this.displayLeaderboard();
+
+    this.add.text(400, 580, 'Press START to return to menu', {
+      fontSize: '16px',
+      fontFamily: 'Courier New, monospace',
+      color: '#888888',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Crear controles de teclado solo si hay victoria
+    if (this.victory) {
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.wasd = this.input.keyboard.addKeys('W,S,A,D');
+
+      // Keyboard input
+      this.input.keyboard.on('keydown', (event) => {
+        this.handleInitialsInput(event);
+      });
+    } else {
+      // Si no hay victoria, solo permitir volver al menú
+      this.input.keyboard.on('keydown', (event) => {
+        const key = event.key.toLowerCase();
+        const arcadeCode = KEYBOARD_TO_ARCADE[event.key] || KEYBOARD_TO_ARCADE[event.code];
+        if (arcadeCode === 'START1' || event.code === 'Space') {
+          this.scene.start('TitleScene');
+        }
+      });
+    }
+  }
+
+  createMatrixBackground() {
+    this.matrixChars = [];
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const screenWidth = 800;
+    const screenHeight = 600;
+    const columnWidth = 20;
+    const columns = Math.floor(screenWidth / columnWidth);
+    const charsPerColumn = 2;
+    const totalChars = columns * charsPerColumn;
+
+    for (let i = 0; i < totalChars; i++) {
+      const columnIndex = Math.floor(i / charsPerColumn);
+      const x = columnIndex * columnWidth + (columnWidth / 2);
+      const y = Math.random() * screenHeight;
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const speed = 50 + Math.random() * 100;
+
+      const text = this.add.text(x, y, char, {
+        fontSize: '16px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        alpha: 0.2
+      }).setOrigin(0.5);
+
+      this.matrixChars.push({ text, speed, x });
+    }
+  }
+
+  update(time, delta) {
+    const screenHeight = 600;
+    this.matrixChars.forEach((char) => {
+      char.text.y += char.speed * (this.game.loop.delta / 1000);
+      if (char.text.y > screenHeight) {
+        char.text.y = -20;
+      }
+    });
+
+    // Solo manejar selección de letras si hay victoria y está en modo de entrada
+    if (this.victory && this.enteringInitials) {
+      this.letterSelectDelay += delta;
+      this.handleLetterSelection(delta);
+    }
+  }
+
+  handleLetterSelection(delta) {
+    if (this.letterSelectDelay < this.letterSelectCooldown) return;
+
+    // Detectar movimiento del joystick
+    let moved = false;
+
+    // Izquierda: P1L, P2L, ArrowLeft, A
+    if ((this.cursors.left.isDown || this.wasd.A.isDown) && this.letterSelectDelay >= this.letterSelectCooldown) {
+      this.currentLetterIndex = (this.currentLetterIndex - 1 + 26) % 26; // Loop de A a Z
+      this.letterSelectDelay = 0;
+      moved = true;
+    }
+    // Derecha: P1R, P2R, ArrowRight, D
+    else if ((this.cursors.right.isDown || this.wasd.D.isDown) && this.letterSelectDelay >= this.letterSelectCooldown) {
+      this.currentLetterIndex = (this.currentLetterIndex + 1) % 26; // Loop de A a Z
+      this.letterSelectDelay = 0;
+      moved = true;
+    }
+
+    if (moved) {
+      this.updateCurrentLetterDisplay();
+    }
+  }
+
+  handleInitialsInput(event) {
+    const key = event.key.toUpperCase();
+    const keyCode = event.code;
+    const arcadeCode = KEYBOARD_TO_ARCADE[event.key] || KEYBOARD_TO_ARCADE[keyCode];
+
+    // Si presiona START, volver al menú (siempre permitido)
+    if (arcadeCode === 'START1' || keyCode === 'Space') {
+      // Si tiene iniciales completas y aún no las guardó, guardarlas primero
+      if (this.victory && this.enteringInitials && this.initials.length === 3) {
+        this.saveScore();
+        this.enteringInitials = false;
+        this.displayLeaderboard();
+      }
+      this.scene.start('TitleScene');
+      return;
+    }
+
+    // Solo permitir entrada de iniciales si hay victoria
+    if (!this.victory || !this.enteringInitials) {
+      return;
+    }
+
+    // Si presiona Enter, guardar y salir del modo de entrada
+    if (keyCode === 'Enter') {
+      if (this.initials.length === 3) {
+        this.saveScore();
+        this.enteringInitials = false;
+        this.displayLeaderboard(); // Actualizar tabla
+      }
+      return;
+    }
+
+    // Si presiona U (botón A), seleccionar la letra actual
+    if (arcadeCode === 'P1A' || key === 'U') {
+      this.selectCurrentLetter();
+      return;
+    }
+  }
+
+  updateCurrentLetterDisplay() {
+    const letter = String.fromCharCode(65 + this.currentLetterIndex); // A-Z (65-90)
+    this.currentLetterText.setText(letter);
+  }
+
+  selectCurrentLetter() {
+    // Solo permitir si hay victoria
+    if (!this.victory || this.currentInitialIndex >= 3) return;
+
+    const letter = String.fromCharCode(65 + this.currentLetterIndex); // A-Z
+    this.initials[this.currentInitialIndex] = letter;
+    this.initialsTexts[this.currentInitialIndex].setText(letter);
+    this.initialsTexts[this.currentInitialIndex].setColor('#00ff00'); // Verde cuando está seleccionada
+
+    // Mover al siguiente slot
+    this.currentInitialIndex++;
+    
+    if (this.currentInitialIndex < 3) {
+      // Ocultar selector anterior y mostrar el siguiente
+      this.letterSelectors[this.currentInitialIndex - 1].setVisible(false);
+      this.letterSelectors[this.currentInitialIndex].setVisible(true);
+      // Resetear letra a A
+      this.currentLetterIndex = 0;
+      this.updateCurrentLetterDisplay();
+    } else {
+      // Todas las iniciales están seleccionadas
+      this.letterSelectors[2].setVisible(false);
+      this.currentLetterText.setVisible(false);
+      this.enteringInitials = false;
+      // Guardar automáticamente solo si hay victoria
+      if (this.victory) {
+        this.saveScore();
+        this.displayLeaderboard();
+      }
+    }
+  }
+
+  loadLeaderboard() {
+    try {
+      const stored = localStorage.getItem('bugToFeatureLeaderboard');
+      this.leaderboard = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      this.leaderboard = [];
+    }
+  }
+
+  saveLeaderboard() {
+    try {
+      localStorage.setItem('bugToFeatureLeaderboard', JSON.stringify(this.leaderboard));
+    } catch (e) {
+      // Ignorar errores de localStorage
+    }
+  }
+
+  saveScore() {
+    // Si no hay iniciales completas, usar "AAA"
+    const initials = this.initials.length === 3 ? this.initials.join('') : 'AAA';
+
+    // Agregar nuevo puntaje
+    this.leaderboard.push({
+      initials: initials,
+      score: this.currentScore,
+      time: this.currentTime
+    });
+
+    // Ordenar por puntaje (mayor primero), luego por tiempo (menor primero)
+    this.leaderboard.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.time - b.time;
+    });
+
+    // Mantener solo los top 10
+    if (this.leaderboard.length > 10) {
+      this.leaderboard = this.leaderboard.slice(0, 10);
+    }
+
+    this.saveLeaderboard();
+  }
+
+  displayLeaderboard() {
+    // Eliminar tabla anterior si existe
+    if (this.leaderboardContainer) {
+      this.leaderboardContainer.destroy(true);
+    }
+
+    // Crear contenedor para la tabla (más abajo para dejar espacio para las iniciales)
+    this.leaderboardContainer = this.add.container(400, 420);
+
+    // Título de la tabla
+    const tableTitle = this.add.text(0, -20, 'HIGH SCORES', {
+      fontSize: '18px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.leaderboardContainer.add(tableTitle);
+
+    // Encabezados
+    const header = this.add.text(0, 10, 'INIT  SCORE  TIME', {
+      fontSize: '12px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffff00',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.leaderboardContainer.add(header);
+
+    // Mostrar top 10
+    const maxEntries = Math.min(10, this.leaderboard.length);
+    for (let i = 0; i < maxEntries; i++) {
+      const entry = this.leaderboard[i];
+      const minutes = Math.floor(entry.time / 60);
+      const seconds = entry.time % 60;
+      const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      const y = 30 + (i * 20);
+      const color = i === 0 ? '#ffff00' : '#ffffff';
+
+      const entryText = this.add.text(0, y, `${entry.initials}  ${entry.score.toString().padStart(5, ' ')}  ${timeString}`, {
+        fontSize: '12px',
+        fontFamily: 'Courier New, monospace',
+        color: color,
+        align: 'center'
+      }).setOrigin(0.5);
+      this.leaderboardContainer.add(entryText);
+    }
+
+    // Si no hay puntajes, mostrar mensaje
+    if (this.leaderboard.length === 0) {
+      const noScores = this.add.text(0, 40, 'No scores yet!', {
+        fontSize: '14px',
+        fontFamily: 'Courier New, monospace',
+        color: '#888888',
+        align: 'center'
+      }).setOrigin(0.5);
+      this.leaderboardContainer.add(noScores);
+    }
+  }
+
+  playTone(frequency, duration) {
+    const audioContext = this.sound.context;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'square';
+
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  }
+}
+
 // Game Scene
 class GameScene extends Phaser.Scene {
   constructor() {
@@ -707,6 +1360,8 @@ class GameScene extends Phaser.Scene {
     this.bugSpawnTimer = 0;
     this.mothershipDirection = 1;
     this.mothershipSpeed = 50;
+    this.gameStartTime = this.time.now; // Tiempo de inicio del juego
+    this.gameTime = 0; // Tiempo total en segundos
 
     // Difficulty levels system (based on production launches)
     this.levels = [
@@ -825,10 +1480,6 @@ class GameScene extends Phaser.Scene {
       // Normalize keyboard input to arcade codes for easier testing
       const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
 
-      if (this.gameOver && (key === 'P2A' || event.key === 'r')) {
-        this.restartGame();
-        return;
-      }
 
       if (key === 'P1A' || event.key === 'u' || event.key === 'U') {
         this.shootBullet();
@@ -1001,6 +1652,9 @@ class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.gameOver) return;
+
+    // Actualizar tiempo de juego
+    this.gameTime = Math.floor((time - this.gameStartTime) / 1000);
 
     // Actualizar fondo tipo matrix
     this.updateMatrixBackground(delta);
@@ -1443,33 +2097,15 @@ class GameScene extends Phaser.Scene {
     this.gameOver = true;
     this.stopBackgroundMusic();
 
-    const overlay = this.add.graphics();
-    overlay.fillStyle(0x000000, 0.8);
-    overlay.fillRect(0, 0, 800, 600);
+    // Calcular tiempo final en segundos
+    const finalTime = Math.floor((this.time.now - this.gameStartTime) / 1000);
 
-    const title = victory ? 'VICTORY!' : 'GAME OVER';
-    const color = victory ? '#00ff00' : '#ff0000';
-
-    this.add.text(400, 250, title, {
-      fontSize: '48px',
-      fontFamily: 'Arial',
-      color: color,
-      align: 'center'
-    }).setOrigin(0.5);
-
-    this.add.text(400, 350, 'Score: ' + this.score, {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#ffffff',
-      align: 'center'
-    }).setOrigin(0.5);
-
-    this.add.text(400, 400, 'Press Button A or R to Restart', {
-      fontSize: '20px',
-      fontFamily: 'Arial',
-      color: '#ffff00',
-      align: 'center'
-    }).setOrigin(0.5);
+    // Pasar datos a la escena de leaderboard
+    this.scene.start('LeaderboardScene', {
+      score: this.score,
+      time: finalTime,
+      victory: victory
+    });
   }
 
   showProductionReady() {
@@ -1493,9 +2129,6 @@ class GameScene extends Phaser.Scene {
     this.productionReadyText.setScale(1);
   }
 
-  restartGame() {
-    this.scene.start('SelectionScene');
-  }
 
   startBackgroundMusic() {
     const audioContext = this.sound.context;
@@ -1627,7 +2260,7 @@ const config = {
       debug: false
     }
   },
-  scene: [TitleScene, InstructionsScene, SelectionScene, GameScene]
+  scene: [TitleScene, InstructionsScene, SelectionScene, GameScene, LeaderboardScene]
 };
 
 const game = new Phaser.Game(config);
