@@ -150,7 +150,7 @@ class TitleScene extends Phaser.Scene {
       const arcadeCode = KEYBOARD_TO_ARCADE[key] || KEYBOARD_TO_ARCADE[event.code];
 
       if (arcadeCode === 'START1' || key === ' ' || key === 'enter' || event.code === 'Space' || event.code === 'Enter') {
-        this.scene.start('SelectionScene');
+        this.scene.start('InstructionsScene');
       }
     });
   }
@@ -185,6 +185,152 @@ class TitleScene extends Phaser.Scene {
 
   update() {
     // Animar caracteres matrix cayendo
+    const screenHeight = 600;
+    this.matrixChars.forEach((char) => {
+      char.text.y += char.speed * (this.game.loop.delta / 1000);
+      if (char.text.y > screenHeight) {
+        char.text.y = -20;
+      }
+    });
+  }
+}
+
+// Instructions Scene
+class InstructionsScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'InstructionsScene' });
+  }
+
+  create() {
+    // Crear fondo tipo matrix/hacker
+    this.createMatrixBackground();
+
+    // Título
+    this.add.text(400, 80, 'INSTRUCCIONES', {
+      fontSize: '36px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Controles
+    this.add.text(400, 150, 'CONTROLES:', {
+      fontSize: '24px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 190, 'WASD / Flechas: Mover', {
+      fontSize: '18px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 220, 'U: Disparar (🐛 → ✨)', {
+      fontSize: '18px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 250, 'J: Lanzar 🚀 a Producción', {
+      fontSize: '18px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Objetivo
+    this.add.text(400, 300, 'OBJETIVO:', {
+      fontSize: '24px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 340, '• Dispara a los bugs 🐛 para convertirlos en features ✨', {
+      fontSize: '16px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 365, '• Recoge los features ✨ que caen', {
+      fontSize: '16px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 390, '• Lanza 🚀 a producción al Product Owner', {
+      fontSize: '16px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 415, '• ⚠️ ¡Evita que los bugs 🐛 lleguen abajo!', {
+      fontSize: '16px',
+      fontFamily: 'Courier New, monospace',
+      color: '#ff0000',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Mensaje para continuar
+    this.continueText = this.add.text(400, 500, 'Presiona cualquier tecla para continuar', {
+      fontSize: '20px',
+      fontFamily: 'Courier New, monospace',
+      color: '#00ff00',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Animación de parpadeo para el texto de continuar
+    this.tweens.add({
+      targets: this.continueText,
+      alpha: 0.3,
+      duration: 800,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Escuchar cualquier tecla para continuar
+    this.input.keyboard.on('keydown', () => {
+      this.scene.start('SelectionScene');
+    });
+  }
+
+  createMatrixBackground() {
+    this.matrixChars = [];
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const screenWidth = 800;
+    const screenHeight = 600;
+    const columnWidth = 20;
+    const columns = Math.floor(screenWidth / columnWidth);
+    const charsPerColumn = 2;
+    const totalChars = columns * charsPerColumn;
+
+    for (let i = 0; i < totalChars; i++) {
+      const columnIndex = Math.floor(i / charsPerColumn);
+      const x = columnIndex * columnWidth + (columnWidth / 2);
+      const y = Math.random() * screenHeight;
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const speed = 50 + Math.random() * 100;
+
+      const text = this.add.text(x, y, char, {
+        fontSize: '16px',
+        fontFamily: 'Courier New, monospace',
+        color: '#00ff00',
+        alpha: 0.2
+      }).setOrigin(0.5);
+
+      this.matrixChars.push({ text, speed, x });
+    }
+  }
+
+  update() {
     const screenHeight = 600;
     this.matrixChars.forEach((char) => {
       char.text.y += char.speed * (this.game.loop.delta / 1000);
@@ -1481,7 +1627,7 @@ const config = {
       debug: false
     }
   },
-  scene: [TitleScene, SelectionScene, GameScene]
+  scene: [TitleScene, InstructionsScene, SelectionScene, GameScene]
 };
 
 const game = new Phaser.Game(config);
